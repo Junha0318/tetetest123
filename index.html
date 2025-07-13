@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>방 탈출 게임</title>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; }
+        #game-container { width: 100%; height: 100%; position: relative; }
+        .room { position: relative; width: 100%; height: 100%; background-size: cover; background-position: center; position: absolute; top: 0; left: 0; display: none; opacity: 0; transition: opacity 0.5s ease-in-out; }
+        .room.active { display: block; opacity: 1; }
+        #room1 { background-image: url('https://github.com/Junha0318/tetetest123/blob/main/Whisk_864e6ac5f1.jpg?raw=true'); }
+        #room2 { background-image: url('https://github.com/Junha0318/tetetest123/blob/main/Whisk_da02bf157b.jpg?raw=true'); }
+        #room3 { background-image: url('https://github.com/Junha0318/tetetest123/blob/main/Whisk_c144633e1c.jpg?raw=true'); }
+        .clickable-object { position: absolute; cursor: pointer; border-radius: 15px; transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out; }
+        .clickable-object:hover { background-color: rgba(255, 255, 0, 0.25); box-shadow: 0 0 15px 5px rgba(255, 255, 0, 0.7); }
+        #object1-1 { top: 40%; left: 35%; width: 30%; height: 45%; } #object1-2 { top: 0; left: 10%; width: 80%; height: 25%; } #object1-3 { top: 70%; left: 65%; width: 20%; height: 20%; }
+        #object2-1 { top: 25%; left: 5%; width: 45%; height: 65%; } #object2-2 { top: 45%; left: 55%; width: 15%; height: 20%; } #object2-3 { top: 15%; left: 70%; width: 25%; height: 30%; }
+        #object3-1 { top: 60%; left: 10%; width: 30%; height: 35%; } #object3-2 { top: 25%; left: 42%; width: 16%; height: 15%; } #object3-3 { top: 30%; left: 65%; width: 30%; height: 50%; }
+        .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); justify-content: center; align-items: center; }
+        .modal-content { background-color: #fefefe; padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content p { margin-bottom: 15px; font-size: 18px; line-height: 1.5; }
+        .modal-content .modal-title { font-size: 22px; font-weight: bold; color: #333; }
+        .modal-content input { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 5px; }
+        .modal-content button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; }
+        .btn-confirm { background-color: #4CAF50; color: white; } .btn-close { background-color: #f44336; color: white; } .btn-restart { background-color: #008CBA; color: white; }
+        .result-message { margin-top: 20px; font-weight: bold; min-height: 25px; }
+        #timer-display { position: fixed; top: 20px; right: 20px; font-size: 1.8em; font-family: 'Courier New', Courier, monospace; color: white; background-color: rgba(0, 0, 0, 0.6); padding: 10px 20px; border-radius: 10px; z-index: 20; }
+        #hint-display { position: fixed; bottom: 20px; left: 20px; font-size: 1.2em; font-family: 'Courier New', Courier, monospace; color: white; background-color: rgba(0, 0, 0, 0.6); padding: 10px 20px; border-radius: 10px; z-index: 20; }
+        #title-screen-modal { display: flex; z-index: 100; }
+        #name-input-modal { display: none; }
+        #timer-display, #hint-display { display: none; }
+        #game-title { font-size: 2.8em; margin-bottom: 40px; color: #222; font-weight: bold; }
+    </style>
+</head>
+<body>
+    
+    <div id="title-screen-modal" class="modal"><div class="modal-content"><h1 id="game-title">아주 평범한 방탈출</h1><button id="show-name-input-btn" class="btn-confirm">시작하기</button></div></div>
+    <div id="name-input-modal" class="modal"><div class="modal-content"><p class="modal-title">방 탈출 게임에 오신 것을 환영합니다!</p><p>당신의 이름을 알려주세요.</p><input type="text" id="player-name-input" placeholder="이름 입력..." maxlength="10"><button id="submit-name-btn" class="btn-confirm">이름 제출</button></div></div>
+    <div id="welcome-message-modal" class="modal"><div class="modal-content"><p id="welcome-message-text" class="modal-title"></p><button id="start-game-btn" class="btn-confirm">확인</button></div></div>
+
+    <div id="timer-display">00:00</div>
+    <div id="hint-display"></div>
+
+    <div id="game-container">
+        <div id="room1" class="room active"><div class="clickable-object" id="object1-1" data-room="1" data-object="1"></div><div class="clickable-object" id="object1-2" data-room="1" data-object="2"></div><div class="clickable-object" id="object1-3" data-room="1" data-object="3"></div></div>
+        <div id="room2" class="room"><div class="clickable-object" id="object2-1" data-room="2" data-object="1"></div><div class="clickable-object" id="object2-2" data-room="2" data-object="2"></div><div class="clickable-object" id="object2-3" data-room="2" data-object="3"></div></div>
+        <div id="room3" class="room"><div class="clickable-object" id="object3-1" data-room="3" data-object="1"></div><div class="clickable-object" id="object3-2" data-room="3" data-object="2"></div><div class="clickable-object" id="object3-3" data-room="3" data-object="3"></div></div>
+    </div>
+    <div id="quiz-modal" class="modal"><div class="modal-content"><p id="quiz-question"></p><input type="text" id="quiz-answer" placeholder="정답을 입력하세요"><button id="submit-answer" class="btn-confirm">정답 확인</button><p id="quiz-result" class="result-message"></p><button id="close-quiz-modal" class="btn-close">닫기</button></div></div>
+    <div id="password-modal" class="modal"><div class="modal-content"><p id="password-title" class="modal-title">비밀번호를 입력하세요</p><p>모든 조각을 순서대로 조합하여 입력하세요.</p><input type="text" id="password-input" placeholder="비밀번호"><button id="submit-password" class="btn-confirm">문 열기</button><p id="password-result" class="result-message"></p></div></div>
+    
+    <div id="game-clear-modal" class="modal">
+        <div class="modal-content">
+            <p class="modal-title"><span id="player-name-display"></span>님, 🎉 탈출 성공! 🎉</p>
+            <!-- ▼▼▼ [랭킹 기능 추가] ▼▼▼ -->
+            <p id="escape-rank" class="result-message"></p>
+            <p id="final-time" class="result-message"></p>
+            <button id="restart-game" class="btn-restart">다시 시작하기</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM 요소 가져오기 ---
+        const quizModal = document.getElementById('quiz-modal'), questionEl = document.getElementById('quiz-question'), answerEl = document.getElementById('quiz-answer'), submitAnswerBtn = document.getElementById('submit-answer'), quizResultEl = document.getElementById('quiz-result'), closeQuizBtn = document.getElementById('close-quiz-modal'), passwordModal = document.getElementById('password-modal'), passwordTitleEl = document.getElementById('password-title'), passwordInputEl = document.getElementById('password-input'), submitPasswordBtn = document.getElementById('submit-password'), passwordResultEl = document.getElementById('password-result'), gameClearModal = document.getElementById('game-clear-modal'), restartGameBtn = document.getElementById('restart-game'), clickableObjects = document.querySelectorAll('.clickable-object');
+        const timerDisplayEl = document.getElementById('timer-display'), finalTimeEl = document.getElementById('final-time'), hintDisplayEl = document.getElementById('hint-display');
+        const nameInputModal = document.getElementById('name-input-modal'), playerNameInputEl = document.getElementById('player-name-input'), submitNameBtn = document.getElementById('submit-name-btn'), playerNameDisplayEl = document.getElementById('player-name-display');
+        const welcomeMessageModal = document.getElementById('welcome-message-modal'), welcomeMessageTextEl = document.getElementById('welcome-message-text'), startGameBtn = document.getElementById('start-game-btn');
+        const titleScreenModal = document.getElementById('title-screen-modal'), showNameInputBtn = document.getElementById('show-name-input-btn');
+        // ▼▼▼ [랭킹 기능 추가] ▼▼▼
+        const escapeRankEl = document.getElementById('escape-rank');
+
+
+        // --- 데이터 정의 ---
+        const quizzes = { '1': { '1': { question: "물놀이를 하기 전, 먼저 해야 할 것은?", answer: "준비운동", secretNumber: '7', solved: false }, '2': { question: "위급 상황일때는 어떻게 해야 할까요?", answer: "도움을 요청한다.", secretNumber: '1', solved: false }, '3': { question: "물에 빠진 사람을 발견했을때, 해야할 행동은?", answer: "112 또는 119 에 신고한다", secretNumber: '4', solved: false } }, '2': { '1': { question: "이곳은 옷을 갈아입는 곳입니다. 무엇이라고 부를까요?", answer: "탈의실", secretNumber: '2', solved: false }, '2': { question: "벽에 붙어있는 종이는 무엇일까요?", answer: "안내문", secretNumber: '9', solved: false }, '3': { question: "밖을 볼 수 있는 이것은 무엇일까요?", answer: "창문", secretNumber: '5', solved: false } }, '3': { '1': { question: "편히 앉아 쉴 수 있는 이것은 무엇일까요?", answer: "의자", secretNumber: '8', solved: false }, '2': { question: "나가려면 이 문으로 가야 합니다. 뭐라고 적혀있나요?", answer: "EXIT", secretNumber: '0', solved: false }, '3': { question: "방 한가운데에 크게 자라있는 식물은?", answer: "나무.", secretNumber: '3', solved: false } } };
+        const roomPasswords = { '1': '714', '2': '295', '3': '803' };
+        const roomStates = { '1': { cleared: false }, '2': { cleared: false }, '3': { cleared: false } };
+        let currentQuiz = {}, currentRoomForPassword = 0, elapsedSeconds = 0, timerInterval = null, collectedHints = {}, playerName = "";
+
+        // --- 함수 정의 ---
+        function startTimer() { timerInterval = setInterval(() => { elapsedSeconds++; const minutes = Math.floor(elapsedSeconds / 60); const seconds = elapsedSeconds % 60; timerDisplayEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; }, 1000); }
+        function updateHintDisplay() { let displayText = "현재 힌트: "; for (let i = 1; i <= 3; i++) { const hintValue = collectedHints[i] || '?'; displayText += `${i}번: ${hintValue} `; } hintDisplayEl.textContent = displayText.trim(); }
+        function resetHints() { collectedHints = {}; updateHintDisplay(); }
+        function checkRoomCompletion(roomNum) { if (roomStates[roomNum].cleared) { return; } const allSolved = Object.values(quizzes[roomNum]).every(quiz => quiz.solved); if (allSolved) { setTimeout(() => { currentRoomForPassword = roomNum; passwordTitleEl.textContent = `제 ${roomNum}방의 비밀번호`; passwordInputEl.value = ''; passwordResultEl.textContent = ''; passwordModal.style.display = 'flex'; passwordInputEl.focus(); }, 300); } }
+        function checkQuizAnswer() { const puncAndSpaceRegex = /[\s.,]/g; const sanitizedUserAnswer = answerEl.value.replace(puncAndSpaceRegex, ''); const sanitizedCorrectAnswer = currentQuiz.answer.replace(puncAndSpaceRegex, ''); if (!sanitizedUserAnswer) { quizResultEl.textContent = "답을 입력해주세요!"; quizResultEl.style.color = 'orange'; return; } if (sanitizedUserAnswer.toLowerCase() === sanitizedCorrectAnswer.toLowerCase()) { const hintIndex = currentQuiz.object; const secretValue = currentQuiz.secretNumber; const hintMessage = `${hintIndex}번째 번호는 ${secretValue}번 입니다!`; quizResultEl.innerHTML = `정답입니다! 🎉<br>${hintMessage}`; quizResultEl.style.color = 'green'; if (!collectedHints[hintIndex]) { collectedHints[hintIndex] = secretValue; updateHintDisplay(); } if (!quizzes[currentQuiz.room][currentQuiz.object].solved) { quizzes[currentQuiz.room][currentQuiz.object].solved = true; } } else { quizResultEl.textContent = `틀렸어요! 정답은 '${currentQuiz.answer}'입니다.`; quizResultEl.style.color = 'red'; } }
+        
+        // ▼▼▼ [랭킹 기능 수정] ▼▼▼
+        function checkRoomPassword() { 
+            const userInput = passwordInputEl.value.trim(); 
+            if (userInput === roomPasswords[currentRoomForPassword]) { 
+                roomStates[currentRoomForPassword].cleared = true; 
+                passwordModal.style.display = 'none'; 
+                if (currentRoomForPassword == 3) { 
+                    clearInterval(timerInterval);
+                    
+                    // localStorage에서 현재 탈출 횟수를 가져옵니다.
+                    // 데이터가 없으면 null이 되므로, Number()로 감싸면 0이 됩니다.
+                    const escapeCount = Number(localStorage.getItem('escapeCount')) || 0;
+                    const newEscapeCount = escapeCount + 1;
+
+                    // 현재 플레이어의 랭킹을 화면에 표시합니다.
+                    escapeRankEl.textContent = `당신은 ${newEscapeCount}번째 탈출자입니다!`;
+                    // 증가된 횟수를 다음 플레이어를 위해 다시 저장합니다.
+                    localStorage.setItem('escapeCount', newEscapeCount);
+                    
+                    playerNameDisplayEl.textContent = playerName; 
+                    finalTimeEl.textContent = `클리어 시간: ${timerDisplayEl.textContent}`; 
+                    gameClearModal.style.display = 'flex'; 
+                } else { 
+                    const currentRoomEl = document.getElementById(`room${currentRoomForPassword}`); 
+                    const nextRoomEl = document.getElementById(`room${Number(currentRoomForPassword) + 1}`); 
+                    currentRoomEl.classList.remove('active'); 
+                    nextRoomEl.classList.add('active'); 
+                    resetHints(); 
+                } 
+            } else { 
+                passwordResultEl.textContent = '비밀번호가 틀렸습니다. 다시 확인해주세요.'; 
+                passwordResultEl.style.color = 'red'; 
+            } 
+        }
+
+        // --- 이벤트 리스너 및 초기화 ---
+        clickableObjects.forEach(obj => { obj.addEventListener('click', () => { const room = obj.dataset.room; const object = obj.dataset.object; currentQuiz = quizzes[room][object]; currentQuiz.room = room; currentQuiz.object = object; questionEl.textContent = currentQuiz.question; quizResultEl.textContent = ''; answerEl.value = ''; quizModal.style.display = 'flex'; answerEl.focus(); }); });
+        submitAnswerBtn.addEventListener('click', checkQuizAnswer);
+        answerEl.addEventListener('keyup', e => { if (e.key === 'Enter') checkQuizAnswer(); });
+        closeQuizBtn.addEventListener('click', () => { quizModal.style.display = 'none'; if (currentQuiz.room) { checkRoomCompletion(currentQuiz.room); } });
+        submitPasswordBtn.addEventListener('click', checkRoomPassword);
+        passwordInputEl.addEventListener('keyup', e => { if (e.key === 'Enter') checkRoomPassword(); });
+        restartGameBtn.addEventListener('click', () => { location.reload(); });
+        showNameInputBtn.addEventListener('click', () => { titleScreenModal.style.display = 'none'; nameInputModal.style.display = 'flex'; playerNameInputEl.focus(); });
+        function handleSubmitName() { playerName = playerNameInputEl.value.trim(); if (!playerName) { alert("이름을 입력해야 시작할 수 있습니다!"); return; } nameInputModal.style.display = 'none'; welcomeMessageTextEl.textContent = `${playerName}님, 행운을 빌게요! ✨`; welcomeMessageModal.style.display = 'flex'; }
+        submitNameBtn.addEventListener('click', handleSubmitName);
+        playerNameInputEl.addEventListener('keyup', (e) => { if (e.key === 'Enter') handleSubmitName(); });
+        function handleGameStart() { welcomeMessageModal.style.display = 'none'; timerDisplayEl.style.display = 'block'; hintDisplayEl.style.display = 'block'; startTimer(); updateHintDisplay(); }
+        startGameBtn.addEventListener('click', handleGameStart);
+    </script>
+</body>
+</html>
